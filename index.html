@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="ko" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>웹 TTS 스마트 리더기</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Pretendard', sans-serif;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-indigo-600 text-white shadow-md sticky top-0 z-40">
+        <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center space-x-2.5">
+                <div class="bg-white/10 p-2 rounded-xl backdrop-blur-sm">
+                    <i class="fa-solid fa-headphones-simple text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="text-base sm:text-lg font-bold leading-tight">오디오웹 리더 (TTS)</h1>
+                    <p class="text-[11px] text-indigo-200">텍스트 및 웹 뉴스를 음성으로 들려드립니다</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-2">
+                <span id="status-badge" class="px-2.5 py-1 bg-indigo-500/50 text-indigo-100 rounded-full text-[11px] font-medium border border-indigo-400/30 flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    준비됨
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-1 max-w-4xl w-full mx-auto p-3 sm:p-5 flex flex-col gap-4">
+
+        <!-- [최우선 영역] 텍스트 본문 & 웹 주소 URL 입력 카드 -->
+        <section class="w-full bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+            <!-- Tabs -->
+            <div class="flex border-b border-slate-200 bg-slate-100 p-1.5 gap-1.5">
+                <button type="button" onclick="switchTab('text')" id="tab-text" class="flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all bg-white text-indigo-600 shadow-sm flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-pen-to-square"></i> 텍스트 직접입력
+                </button>
+                <button type="button" onclick="switchTab('url')" id="tab-url" class="flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all text-slate-600 hover:text-slate-900 flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-globe"></i> 웹 주소(URL) 읽기
+                </button>
+            </div>
+
+            <!-- Tab Content: Text Input (기본 활성화) -->
+            <div id="content-text" class="p-3.5 sm:p-4 flex flex-col">
+                <div class="flex justify-between items-center mb-2">
+                    <label for="text-input" class="text-xs font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
+                        <i class="fa-solid fa-align-left text-indigo-500"></i> 읽을 본문 내용
+                    </label>
+                    <button type="button" onclick="clearText()" class="text-xs text-rose-500 hover:text-rose-700 font-semibold flex items-center gap-1 px-2 py-1 rounded hover:bg-rose-50 transition-colors">
+                        <i class="fa-solid fa-trash-can"></i> 지우기
+                    </button>
+                </div>
+                <textarea id="text-input" class="w-full min-h-[180px] sm:min-h-[220px] p-3.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none resize-y text-slate-800 text-sm leading-relaxed custom-scrollbar bg-slate-50/50" placeholder="여기에 읽고 싶은 뉴스나 글을 직접 입력하거나 붙여넣으세요..."></textarea>
+            </div>
+
+            <!-- Tab Content: URL Input -->
+            <div id="content-url" class="p-3.5 sm:p-4 flex flex-col hidden">
+                <label for="url-input" class="text-xs font-bold text-slate-600 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                    <i class="fa-solid fa-link text-indigo-500"></i> 웹 뉴스 / 기사 주소 (URL)
+                </label>
+                <!-- URL 입력 필드 + 가져오기 버튼 한 줄 구성 -->
+                <div class="flex items-center gap-2 mb-3">
+                    <div class="relative flex-1">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                        <input type="url" id="url-input" class="w-full pl-8 pr-2.5 py-2.5 sm:py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-slate-800 text-xs sm:text-sm bg-slate-50/50" placeholder="https://news.naver.com/article/...">
+                    </div>
+                    <button type="button" onclick="fetchUrlContent()" id="fetch-btn" class="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5 shadow-sm shrink-0 whitespace-nowrap">
+                        <i class="fa-solid fa-download"></i> 가져오기
+                    </button>
+                </div>
+
+                <div class="bg-indigo-50/80 border border-indigo-100 rounded-xl p-3 text-xs text-indigo-900 flex items-start gap-2 mb-2">
+                    <i class="fa-solid fa-circle-info text-indigo-500 mt-0.5 text-xs sm:text-sm shrink-0"></i>
+                    <div>
+                        <p class="font-semibold text-indigo-950 mb-0.5">본문 자동 추출</p>
+                        <p class="text-indigo-700 leading-snug">웹 주소를 넣고 [가져오기]를 누르면 로고, 사진 설명, 댓글 등을 모두 지우고 본문만 텍스트 창으로 옮겨옵니다.</p>
+                    </div>
+                </div>
+
+                <div id="url-preview-container" class="flex flex-col hidden mt-2">
+                    <span class="text-xs font-bold text-slate-500 mb-1">추출된 본문 미리보기</span>
+                    <div id="url-preview-text" class="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600 overflow-y-auto custom-scrollbar max-h-36"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 재생 컨트롤 카드 (본문 입력창 바로 아래 배치) -->
+        <section class="w-full bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex flex-col gap-3">
+            <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                <i class="fa-solid fa-circle-play text-indigo-500"></i> 재생 제어
+            </h2>
+            <div class="grid grid-cols-2 gap-2.5">
+                <button type="button" onclick="togglePlayPause()" id="play-pause-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-semibold text-sm transition-all flex flex-col items-center justify-center gap-1 shadow-sm shadow-indigo-200 active:scale-95">
+                    <i class="fa-solid fa-play text-base" id="play-pause-icon"></i>
+                    <span id="play-pause-text">재생</span>
+                </button>
+                <button type="button" onclick="stopSpeech()" id="stop-btn" class="bg-rose-50 hover:bg-rose-100 text-rose-600 py-3 rounded-xl font-semibold text-sm transition-all flex flex-col items-center justify-center gap-1 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                    <i class="fa-solid fa-stop text-base"></i>
+                    <span>정지</span>
+                </button>
+            </div>
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-center">
+                <p class="text-xs text-slate-600 font-medium" id="player-tip">원하는 텍스트를 입력하고 재생 버튼을 누르세요.</p>
+            </div>
+        </section>
+
+        <!-- 음성 설정 카드 (화면 최하단에 보조 형태로 정돈) -->
+        <section class="w-full bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex flex-col gap-3.5 mb-6">
+            <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                <i class="fa-solid fa-sliders text-indigo-500"></i> 음성 및 소리 설정
+            </h2>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <!-- Voice Selection -->
+                <div class="sm:col-span-1">
+                    <label for="voice-select" class="block text-xs font-medium text-slate-600 mb-1">음성 종류 (목소리)</label>
+                    <select id="voice-select" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none"></select>
+                </div>
+
+                <!-- Speed Control -->
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <label for="rate-range" class="text-xs font-medium text-slate-600">읽기 속도</label>
+                        <span id="rate-value" class="text-xs font-bold text-indigo-600">1.0x</span>
+                    </div>
+                    <input type="range" id="rate-range" min="0.5" max="2.0" step="0.1" value="1.0" class="w-full accent-indigo-600 cursor-pointer" oninput="updateRangeLabel('rate')">
+                </div>
+
+                <!-- Pitch Control -->
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <label for="pitch-range" class="text-xs font-medium text-slate-600">음높이 (톤)</label>
+                        <span id="pitch-value" class="text-xs font-bold text-indigo-600">1.0</span>
+                    </div>
+                    <input type="range" id="pitch-range" min="0.5" max="1.5" step="0.1" value="1.0" class="w-full accent-indigo-600 cursor-pointer" oninput="updateRangeLabel('pitch')">
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Custom Modal for Notifications -->
+    <div id="custom-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl border border-slate-100 transform transition-all">
+            <div id="modal-icon" class="w-12 h-12 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl mb-4 mx-auto">
+                <i class="fa-solid fa-info"></i>
+            </div>
+            <h3 id="modal-title" class="text-base font-bold text-slate-800 text-center mb-1">알림</h3>
+            <p id="modal-message" class="text-sm text-slate-600 text-center mb-6">메시지 내용</p>
+            <button onclick="closeModal()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl font-semibold text-sm transition-all shadow-sm">
+                확인
+            </button>
+        </div>
+    </div>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        let synth = window.speechSynthesis;
+        let voices = [];
+        let currentUtterance = null;
+        let activeTab = 'text';
+
+        // Initialize and sort voices to prioritize natural Korean voices
+        function loadVoices() {
+            voices = synth.getVoices();
+            const voiceSelect = document.getElementById('voice-select');
+            voiceSelect.innerHTML = '';
+
+            let koreanVoices = voices.filter(v => v.lang.toLowerCase().includes('ko'));
+            let otherVoices = voices.filter(v => !v.lang.toLowerCase().includes('ko'));
+
+            koreanVoices.sort((a, b) => {
+                const nameA = a.name.toLowerCase();
+                const nameB = b.name.toLowerCase();
+                if (nameA.includes('google') || nameA.includes('natural')) return -1;
+                if (nameB.includes('google') || nameB.includes('natural')) return 1;
+                return 0;
+            });
+
+            const displayVoices = koreanVoices.length > 0 ? koreanVoices.concat(otherVoices) : voices;
+
+            displayVoices.forEach((voice) => {
+                const option = document.createElement('option');
+                option.value = voices.indexOf(voice);
+                
+                let label = `${voice.name} (${voice.lang})`;
+                if (voice.lang.toLowerCase().includes('ko')) {
+                    label = `[한국어] ${voice.name}`;
+                }
+                option.textContent = label;
+
+                if (voice.lang.toLowerCase().includes('ko') && !voiceSelect.value) {
+                    option.selected = true;
+                }
+                voiceSelect.appendChild(option);
+            });
+
+            if (voiceSelect.options.length > 0 && voiceSelect.selectedIndex === -1) {
+                voiceSelect.selectedIndex = 0;
+            }
+        }
+
+        if (synth.onvoiceschanged !== undefined) {
+            synth.onvoiceschanged = loadVoices;
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            loadVoices();
+            setTimeout(loadVoices, 250);
+        });
+
+        // Tab Switching Logic
+        function switchTab(tab) {
+            activeTab = tab;
+            const textTabBtn = document.getElementById('tab-text');
+            const urlTabBtn = document.getElementById('tab-url');
+            const textContent = document.getElementById('content-text');
+            const urlContent = document.getElementById('content-url');
+
+            if (tab === 'text') {
+                textTabBtn.className = "flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all bg-white text-indigo-600 shadow-sm flex items-center justify-center gap-1.5";
+                urlTabBtn.className = "flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all text-slate-600 hover:text-slate-900 flex items-center justify-center gap-1.5";
+                textContent.classList.remove('hidden');
+                urlContent.classList.add('hidden');
+            } else {
+                urlTabBtn.className = "flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all bg-white text-indigo-600 shadow-sm flex items-center justify-center gap-1.5";
+                textTabBtn.className = "flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all text-slate-600 hover:text-slate-900 flex items-center justify-center gap-1.5";
+                urlContent.classList.remove('hidden');
+                textContent.classList.add('hidden');
+            }
+        }
+
+        function updateRangeLabel(type) {
+            if (type === 'rate') {
+                const val = parseFloat(document.getElementById('rate-range').value).toFixed(1);
+                document.getElementById('rate-value').textContent = `${val}x`;
+            } else if (type === 'pitch') {
+                const val = parseFloat(document.getElementById('pitch-range').value).toFixed(1);
+                document.getElementById('pitch-value').textContent = val;
+            }
+        }
+
+        // Fetch URL Content using multiple robust public proxy gateways
+        async function fetchUrlContent() {
+            const urlInput = document.getElementById('url-input').value.trim();
+            if (!urlInput) {
+                showModal('입력 오류', '유효한 웹 주소(URL)를 입력해주세요.', 'warning');
+                return;
+            }
+
+            const fetchBtn = document.getElementById('fetch-btn');
+            fetchBtn.disabled = true;
+            fetchBtn.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i> 분석 중...';
+
+            const proxyServices = [
+                `https://r.jina.ai/${encodeURIComponent(urlInput)}`,
+                `https://api.allorigins.win/raw?url=${encodeURIComponent(urlInput)}`
+            ];
+
+            let extractedText = null;
+
+            for (let i = 0; i < proxyServices.length; i++) {
+                try {
+                    const proxyUrl = proxyServices[i];
+                    const response = await fetch(proxyUrl);
+                    
+                    if (!response.ok) continue;
+
+                    if (proxyUrl.includes('r.jina.ai')) {
+                        const textData = await response.text();
+                        if (textData && textData.length > 50) {
+                            let lines = textData.split('\n');
+                            let cleanLines = [];
+
+                            const stopKeywords = [
+                                '댓글', '함께 볼만한 뉴스', '이 기사를 추천합니다', '가치있는 소비', 
+                                '연령별 통계', '작성자 삭제', '규정 미준수', '헤드라인', '많이 본 뉴스', 
+                                '따뜻한 뉴스', '이슈 NOW', '인공지능', '증시', '김건희', '트럼프', 
+                                '반도체', '관세', '지방선거', 'Copyright', '무단전재', '기자 구독',
+                                '성별 남성 여성', '말하기 속도', '이동 통신망을 이용하여'
+                            ];
+
+                            const skipKeywords = [
+                                'Title:', 'URL Source:', 'Markdown Content:', 'Author:', 'Published Time:',
+                                '구독하기', '주요뉴스', '언론사 구독', '이전 페이지', '본문 바로가기', 
+                                '뉴스 이용 설정', '텍스트 음성 변환 서비스', '글자 크기 변경하기', 
+                                'SNS 보내기', '인쇄하기', '게티이미지뱅크', '참고 사진', '_입력_', '_수정_',
+                                '기사 원문', '언론사가 직접 선정한 이슈', 'PICK', '안내',
+                                '동아일보', '조선일보', '중앙일보', 'KBS', 'MBC', 'SBS', 'YTN'
+                            ];
+
+                            for (let line of lines) {
+                                line = line.trim();
+                                if (!line) continue;
+
+                                if (line.startsWith('![') || line.includes('게티이미지') || line.includes('참고 사진') || line.includes('Image ')) {
+                                    continue;
+                                }
+
+                                if (stopKeywords.some(kw => line.includes(kw))) {
+                                    if (cleanLines.length > 3) break;
+                                    continue;
+                                }
+
+                                if (skipKeywords.some(sk => line.includes(sk) && line.length < 30)) {
+                                    continue;
+                                }
+
+                                if (line.startsWith('##') || line.startsWith('# ')) {
+                                    let cleanedTitle = line.replace(/^[#\s]+/, '').trim();
+                                    if (cleanLines.length === 0 || cleanLines[0] !== cleanedTitle) {
+                                        cleanLines.push(cleanedTitle);
+                                    }
+                                    continue;
+                                }
+
+                                if (line.length > 10 && !line.startsWith('[') && !line.includes('http') && !line.includes('naver.com')) {
+                                    line = line.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+                                    line = line.replace(/[_*]/g, '');
+                                    let trimmedLine = line.trim();
+                                    
+                                    if (cleanLines.length > 0 && cleanLines[0] === trimmedLine) {
+                                        continue;
+                                    }
+                                    
+                                    if (trimmedLine.length > 5) {
+                                        cleanLines.push(trimmedLine);
+                                    }
+                                }
+                            }
+
+                            let cleaned = cleanLines.join('\n\n').trim();
+                            if (cleaned.length > 30) {
+                                extractedText = cleaned;
+                                break;
+                            }
+                        }
+                    } else {
+                        const htmlText = await response.text();
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(htmlText, 'text/html');
+                        
+                        doc.querySelectorAll('script, style, nav, footer, header, aside, iframe, noscript, form, img, figure, figcaption, .ad, .advertisement, .social-share, .comments, .media_end_head, .press_logo, .navigation').forEach(el => el.remove());
+                        
+                        let articleEl = doc.querySelector('article') || 
+                                        doc.querySelector('.article-view') || 
+                                        doc.querySelector('#articleBodyContents') || 
+                                        doc.querySelector('.news_end') || 
+                                        doc.querySelector('.media_end_body') ||
+                                        doc.querySelector('.article_body') ||
+                                        doc.querySelector('#articeBody');
+
+                        let text = '';
+                        if (articleEl) {
+                            text = articleEl.innerText || articleEl.textContent;
+                        } else {
+                            text = doc.body.innerText || doc.body.textContent;
+                        }
+
+                        let rawLines = text.split('\n');
+                        let filteredLines = [];
+                        for (let rl of rawLines) {
+                            rl = rl.trim();
+                            if (rl.length < 5) continue;
+                            if (rl.includes('Copyright') || rl.includes('무단전재') || rl.includes('댓글') || rl.includes('구독') || rl.includes('게티이미지')) continue;
+                            filteredLines.push(rl);
+                        }
+
+                        let finalCleaned = filteredLines.join('\n\n').trim();
+                        if (finalCleaned.length > 30) {
+                            extractedText = finalCleaned;
+                            break;
+                        }
+                    }
+                } catch (e) {
+                    console.warn(`Proxy gateway ${i} failed:`, e);
+                }
+            }
+
+            if (extractedText && extractedText.length > 20) {
+                const previewContainer = document.getElementById('url-preview-container');
+                const previewText = document.getElementById('url-preview-text');
+                if (previewContainer) previewContainer.classList.remove('hidden');
+                if (previewText) previewText.textContent = extractedText;
+                
+                const textInput = document.getElementById('text-input');
+                if (textInput) textInput.value = extractedText;
+                
+                switchTab('text');
+                showModal('가져오기 성공', '이미지 설명과 불필요한 메타 정보를 모두 생략하고 순수 기사 내용만 깔끔하게 불러왔습니다!', 'success');
+            } else {
+                showModal('가져오기 제한 안내', '해당 웹사이트는 강력한 보안 정책을 사용 중입니다.\n\n해결 방법: 브라우저에서 기사 본문 영역만 마우스로 드래그하여 복사한 뒤, [직접 입력/붙여넣기] 탭에 붙여넣어 주시면 완벽하게 읽어드립니다!', 'warning');
+            }
+
+            fetchBtn.disabled = false;
+            fetchBtn.innerHTML = '<i class="fa-solid fa-download"></i> 가져오기';
+        }
+
+        // Clear Text Functionality
+        function clearText() {
+            document.getElementById('text-input').value = '';
+            const previewText = document.getElementById('url-preview-text');
+            if (previewText) previewText.textContent = '';
+            const previewContainer = document.getElementById('url-preview-container');
+            if (previewContainer) previewContainer.classList.add('hidden');
+            stopSpeech();
+        }
+
+        // Robust TTS Speech State & Queue Variables
+        let speechQueue = [];
+        let currentChunkIndex = 0;
+        let playerState = 'stopped'; // 'stopped', 'playing', 'paused'
+
+        function togglePlayPause() {
+            if (playerState === 'playing') {
+                // Pause current speech
+                synth.pause();
+                playerState = 'paused';
+                updatePlayerState();
+            } else if (playerState === 'paused') {
+                // Resume from paused state
+                synth.resume();
+                playerState = 'playing';
+                updatePlayerState();
+            } else {
+                // Start fresh playback from beginning or current text
+                const text = document.getElementById('text-input').value.trim();
+                if (!text) {
+                    showModal('안내', '읽을 내용이 없습니다. 텍스트를 입력하거나 웹 주소를 불러주세요.', 'warning');
+                    return;
+                }
+
+                synth.cancel();
+
+                // Break text into manageable chunks (< 170 chars)
+                let rawChunks = text.match(/[^.!?\n]+[.!?\n]+/g) || [text];
+                speechQueue = [];
+                rawChunks.forEach(chunk => {
+                    chunk = chunk.trim();
+                    if (!chunk) return;
+                    if (chunk.length > 170) {
+                        for (let i = 0; i < chunk.length; i += 170) {
+                            speechQueue.push(chunk.substring(i, i + 170));
+                        }
+                    } else {
+                        speechQueue.push(chunk);
+                    }
+                });
+
+                if (speechQueue.length === 0) {
+                    speechQueue = [text];
+                }
+
+                currentChunkIndex = 0;
+                playerState = 'playing';
+                updatePlayerState();
+                speakNextChunk();
+            }
+        }
+
+        function speakNextChunk() {
+            if (playerState !== 'playing' || currentChunkIndex >= speechQueue.length) {
+                if (currentChunkIndex >= speechQueue.length) {
+                    playerState = 'stopped';
+                    currentChunkIndex = 0;
+                    updatePlayerState();
+                }
+                return;
+            }
+
+            const chunkText = speechQueue[currentChunkIndex];
+            currentUtterance = new SpeechSynthesisUtterance(chunkText);
+            
+            const voiceSelect = document.getElementById('voice-select');
+            const selectedVoiceIndex = voiceSelect.value;
+            if (voices[selectedVoiceIndex]) {
+                currentUtterance.voice = voices[selectedVoiceIndex];
+            }
+
+            currentUtterance.rate = parseFloat(document.getElementById('rate-range').value);
+            currentUtterance.pitch = parseFloat(document.getElementById('pitch-range').value);
+
+            currentUtterance.onend = () => {
+                if (playerState === 'playing') {
+                    currentChunkIndex++;
+                    speakNextChunk();
+                }
+            };
+
+            currentUtterance.onerror = (e) => {
+                console.warn('Speech chunk warning:', e);
+                if (playerState === 'playing') {
+                    currentChunkIndex++;
+                    speakNextChunk();
+                }
+            };
+
+            synth.speak(currentUtterance);
+        }
+
+        function stopSpeech() {
+            synth.cancel();
+            playerState = 'stopped';
+            currentChunkIndex = 0;
+            speechQueue = [];
+            updatePlayerState();
+        }
+
+        function updatePlayerState() {
+            const playPauseBtn = document.getElementById('play-pause-btn');
+            const playPauseIcon = document.getElementById('play-pause-icon');
+            const playPauseText = document.getElementById('play-pause-text');
+            const stopBtn = document.getElementById('stop-btn');
+            const statusBadge = document.getElementById('status-badge');
+            const playerTip = document.getElementById('player-tip');
+
+            if (playerState === 'playing') {
+                playPauseBtn.className = "flex-1 py-3 rounded-xl font-semibold text-sm transition-all flex flex-col items-center justify-center gap-1 shadow-sm bg-amber-500 hover:bg-amber-600 text-white shadow-amber-200";
+                playPauseIcon.className = "fa-solid fa-pause text-base";
+                playPauseText.textContent = "일시정지";
+                stopBtn.disabled = false;
+                statusBadge.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> 재생 중...';
+                playerTip.textContent = `음성 재생 중입니다... (${currentChunkIndex + 1} / ${speechQueue.length} 구절)`;
+            } else if (playerState === 'paused') {
+                playPauseBtn.className = "flex-1 py-3 rounded-xl font-semibold text-sm transition-all flex flex-col items-center justify-center gap-1 shadow-sm bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200";
+                playPauseIcon.className = "fa-solid fa-play text-base";
+                playPauseText.textContent = "이어듣기";
+                stopBtn.disabled = false;
+                statusBadge.innerHTML = '<span class="w-2 h-2 rounded-full bg-amber-400"></span> 일시정지됨';
+                playerTip.textContent = '일시정지되었습니다. 이어듣기 버튼을 누르면 멈춘 지점부터 계속 재생됩니다.';
+            } else {
+                playPauseBtn.className = "flex-1 py-3 rounded-xl font-semibold text-sm transition-all flex flex-col items-center justify-center gap-1 shadow-sm bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200";
+                playPauseIcon.className = "fa-solid fa-play text-base";
+                playPauseText.textContent = "재생";
+                stopBtn.disabled = true;
+                statusBadge.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> 준비됨';
+                playerTip.textContent = '원하는 텍스트를 입력하고 재생 버튼을 누르세요.';
+            }
+        }
+
+        // Custom Modal Actions
+        function showModal(title, message, type = 'info') {
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-message').innerText = message;
+            
+            const iconDiv = document.getElementById('modal-icon');
+            if (type === 'success') {
+                iconDiv.className = 'w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl mb-4 mx-auto';
+                iconDiv.innerHTML = '<i class="fa-solid fa-check"></i>';
+            } else if (type === 'warning') {
+                iconDiv.className = 'w-12 h-12 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center text-xl mb-4 mx-auto';
+                iconDiv.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
+            } else if (type === 'error') {
+                iconDiv.className = 'w-12 h-12 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center text-xl mb-4 mx-auto';
+                iconDiv.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
+            } else {
+                iconDiv.className = 'w-12 h-12 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl mb-4 mx-auto';
+                iconDiv.innerHTML = '<i class="fa-solid fa-info"></i>';
+            }
+
+            document.getElementById('custom-modal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('custom-modal').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
